@@ -9,6 +9,7 @@ import net.minecraft.entity.player.EntityPlayer;
 
 public class GhostHand extends Module {
     public final BooleanProperty teamsOnly = new BooleanProperty("team-only", true);
+    public final BooleanProperty friendsOnly = new BooleanProperty("friends-only", true);
     public final BooleanProperty ignoreWeapons = new BooleanProperty("ignore-weapons", false);
 
     public GhostHand() {
@@ -18,7 +19,12 @@ public class GhostHand extends Module {
     public boolean shouldSkip(Entity entity) {
         return entity instanceof EntityPlayer
                 && !TeamUtil.isBot((EntityPlayer) entity)
-                && (!this.teamsOnly.getValue() || TeamUtil.isSameTeam((EntityPlayer) entity))
+                && (
+                (!teamsOnly.getValue() && !friendsOnly.getValue()) ||
+                        ((!teamsOnly.getValue() || TeamUtil.isSameTeam((EntityPlayer) entity)) &&
+                                (!friendsOnly.getValue() || TeamUtil.isFriend((EntityPlayer) entity))
+                        )
+        )
                 && (!this.ignoreWeapons.getValue() || !ItemUtil.hasRawUnbreakingEnchant());
     }
 }
