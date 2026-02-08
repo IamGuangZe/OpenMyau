@@ -2,7 +2,6 @@ package myau.module.modules;
 
 import com.google.common.base.CaseFormat;
 import myau.Myau;
-import myau.enums.BlinkModules;
 import myau.event.EventManager;
 import myau.event.EventTarget;
 import myau.event.types.EventType;
@@ -16,7 +15,6 @@ import myau.util.*;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.entity.EntityOtherPlayerMP;
 import net.minecraft.client.gui.inventory.GuiContainer;
-import net.minecraft.entity.DataWatcher.WatchableObject;
 import net.minecraft.entity.Entity;
 import net.minecraft.entity.EntityLivingBase;
 import net.minecraft.entity.boss.EntityDragon;
@@ -34,29 +32,20 @@ import net.minecraft.item.ItemStack;
 import net.minecraft.item.ItemSword;
 import net.minecraft.network.play.client.C02PacketUseEntity;
 import net.minecraft.network.play.client.C02PacketUseEntity.Action;
-import net.minecraft.network.play.client.C09PacketHeldItemChange;
-import net.minecraft.network.play.server.S06PacketUpdateHealth;
-import net.minecraft.network.play.server.S1CPacketEntityMetadata;
-import net.minecraft.util.*;
+import net.minecraft.util.AxisAlignedBB;
 import net.minecraft.util.MovingObjectPosition.MovingObjectType;
 import net.minecraft.world.WorldSettings.GameType;
 
 import java.awt.*;
-import java.text.DecimalFormat;
-import java.text.DecimalFormatSymbols;
 import java.util.ArrayList;
-import java.util.Locale;
-import java.util.Random;
 
 public class KillAura extends Module {
     private static final Minecraft mc = Minecraft.getMinecraft();
-    private static final DecimalFormat df = new DecimalFormat("+0.0;-0.0", new DecimalFormatSymbols(Locale.US));
     private final TimerUtil timer = new TimerUtil();
     private AttackData target = null;
     private int switchTick = 0;
     private boolean hitRegistered = false;
     private long attackDelayMS = 0L;
-    private int lastTickProcessed;
     public final ModeProperty mode;
     public final ModeProperty sort;
     public final FloatProperty swingRange;
@@ -81,7 +70,6 @@ public class KillAura extends Module {
     public final BooleanProperty silverfish;
     public final BooleanProperty teams;
     public final ModeProperty showTarget;
-    public final ModeProperty debugLog;
 
     private long getAttackDelay() {
         return 1000L / RandomUtil.nextLong(this.minCPS.getValue(), this.maxCPS.getValue());
@@ -248,7 +236,6 @@ public class KillAura extends Module {
 
     public KillAura() {
         super("KillAura", false);
-        this.lastTickProcessed = 0;
         this.mode = new ModeProperty("mode", 0, new String[]{"SINGLE", "SWITCH"});
         this.sort = new ModeProperty("sort", 0, new String[]{"DISTANCE", "HEALTH", "HURT_TIME", "FOV"});
         this.swingRange = new FloatProperty("swing-range", 3.5F, 3.0F, 6.0F);
@@ -273,7 +260,6 @@ public class KillAura extends Module {
         this.silverfish = new BooleanProperty("silverfish", false);
         this.teams = new BooleanProperty("teams", true);
         this.showTarget = new ModeProperty("show-target", 0, new String[]{"NONE", "DEFAULT", "HUD"});
-        this.debugLog = new ModeProperty("debug-log", 0, new String[]{"NONE", "HEALTH"});
     }
 
     public EntityLivingBase getTarget() {
@@ -389,51 +375,6 @@ public class KillAura extends Module {
                         this.target = new AttackData(this.target.getEntity());
                     }
                     break;
-            }
-        }
-    }
-
-    @EventTarget(Priority.LOWEST)
-    public void onPacket(PacketEvent event) {
-        if (this.isEnabled() && !event.isCancelled()) {
-            if (this.debugLog.getValue() == 1 && this.isAttackAllowed()) {
-                if (event.getPacket() instanceof S06PacketUpdateHealth) {
-                    float packet = ((S06PacketUpdateHealth) event.getPacket()).getHealth() - mc.thePlayer.getHealth();
-                    if (packet != 0.0F && this.lastTickProcessed != mc.thePlayer.ticksExisted) {
-                        this.lastTickProcessed = mc.thePlayer.ticksExisted;
-                        ChatUtil.sendFormatted(
-                                String.format(
-                                        "%sHealth: %s&l%s&r (&otick: %d&r)&r",
-                                        Myau.clientName,
-                                        packet > 0.0F ? "&a" : "&c",
-                                        df.format(packet),
-                                        mc.thePlayer.ticksExisted
-                                )
-                        );
-                    }
-                }
-                if (event.getPacket() instanceof S1CPacketEntityMetadata) {
-                    S1CPacketEntityMetadata packet = (S1CPacketEntityMetadata) event.getPacket();
-                    if (packet.getEntityId() == mc.thePlayer.getEntityId()) {
-                        for (WatchableObject watchableObject : packet.func_149376_c()) {
-                            if (watchableObject.getDataValueId() == 6) {
-                                float diff = (Float) watchableObject.getObject() - mc.thePlayer.getHealth();
-                                if (diff != 0.0F && this.lastTickProcessed != mc.thePlayer.ticksExisted) {
-                                    this.lastTickProcessed = mc.thePlayer.ticksExisted;
-                                    ChatUtil.sendFormatted(
-                                            String.format(
-                                                    "%sHealth: %s&l%s&r (&otick: %d&r)&r",
-                                                    Myau.clientName,
-                                                    diff > 0.0F ? "&a" : "&c",
-                                                    df.format(diff),
-                                                    mc.thePlayer.ticksExisted
-                                            )
-                                    );
-                                }
-                            }
-                        }
-                    }
-                }
             }
         }
     }
