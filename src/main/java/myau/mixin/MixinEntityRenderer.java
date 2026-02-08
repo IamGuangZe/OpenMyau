@@ -33,10 +33,6 @@ import java.util.List;
 public abstract class MixinEntityRenderer {
     @Unique
     private Box<Integer> slot = null;
-    @Unique
-    private Box<ItemStack> using = null;
-    @Unique
-    private Box<Integer> useCount = null;
     @Shadow
     private Minecraft mc;
     @Shadow
@@ -56,13 +52,6 @@ public abstract class MixinEntityRenderer {
                     this.mc.thePlayer.inventory.currentItem = slot;
                 }
             }
-            KillAura killAura = (KillAura) Myau.moduleManager.modules.get(KillAura.class);
-            if (killAura.isEnabled() && killAura.isBlocking()) {
-                this.using = new Box<>(((IAccessorEntityPlayer) this.mc.thePlayer).getItemInUse());
-                ((IAccessorEntityPlayer) this.mc.thePlayer).setItemInUse(this.mc.thePlayer.inventory.getCurrentItem());
-                this.useCount = new Box<>(((IAccessorEntityPlayer) this.mc.thePlayer).getItemInUseCount());
-                ((IAccessorEntityPlayer) this.mc.thePlayer).setItemInUseCount(69000);
-            }
         }
     }
 
@@ -75,14 +64,6 @@ public abstract class MixinEntityRenderer {
             this.mc.thePlayer.inventory.currentItem = this.slot.value;
             this.slot = null;
         }
-        if (this.using != null) {
-            ((IAccessorEntityPlayer) this.mc.thePlayer).setItemInUse(this.using.value);
-            this.using = null;
-        }
-        if (this.useCount != null) {
-            ((IAccessorEntityPlayer) this.mc.thePlayer).setItemInUseCount(this.useCount.value);
-            this.useCount = null;
-        }
     }
 
     @Inject(
@@ -93,15 +74,6 @@ public abstract class MixinEntityRenderer {
         Scaffold scaffold = (Scaffold) Myau.moduleManager.modules.get(Scaffold.class);
         if (scaffold.isEnabled() && scaffold.itemSpoof.getValue()) {
             int slot = scaffold.getSlot();
-            if (slot >= 0) {
-                this.slot = new Box<>(this.mc.thePlayer.inventory.currentItem);
-                this.mc.thePlayer.inventory.currentItem = slot;
-            }
-        }
-
-        AutoBlockIn autoBlockIn = (AutoBlockIn) Myau.moduleManager.modules.get(AutoBlockIn.class);
-        if (autoBlockIn.isEnabled() && autoBlockIn.itemSpoof.getValue()) {
-            int slot = autoBlockIn.getSlot();
             if (slot >= 0) {
                 this.slot = new Box<>(this.mc.thePlayer.inventory.currentItem);
                 this.mc.thePlayer.inventory.currentItem = slot;
