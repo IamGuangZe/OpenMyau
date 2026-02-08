@@ -2,7 +2,6 @@ package myau.module.modules;
 
 import com.google.common.base.CaseFormat;
 import myau.Myau;
-import myau.event.EventManager;
 import myau.event.EventTarget;
 import myau.event.types.EventType;
 import myau.event.types.Priority;
@@ -28,8 +27,6 @@ import net.minecraft.entity.passive.EntityBat;
 import net.minecraft.entity.passive.EntitySquid;
 import net.minecraft.entity.passive.EntityVillager;
 import net.minecraft.entity.player.EntityPlayer;
-import net.minecraft.item.ItemStack;
-import net.minecraft.item.ItemSword;
 import net.minecraft.network.play.client.C02PacketUseEntity;
 import net.minecraft.network.play.client.C02PacketUseEntity.Action;
 import net.minecraft.util.AxisAlignedBB;
@@ -75,30 +72,23 @@ public class KillAura extends Module {
         return 1000L / RandomUtil.nextLong(this.minCPS.getValue(), this.maxCPS.getValue());
     }
 
-    private boolean performAttack(float yaw, float pitch) {
+    private void performAttack(float yaw, float pitch) {
         if (!Myau.playerStateManager.digging && !Myau.playerStateManager.placing) {
             if (this.attackDelayMS > 0L) {
-                return false;
             } else {
                 this.attackDelayMS = this.attackDelayMS + this.getAttackDelay();
                 mc.thePlayer.swingItem();
                 if ((this.rotations.getValue() != 0 || !this.isBoxInAttackRange(this.target.getBox()))
                         && RotationUtil.rayTrace(this.target.getBox(), yaw, pitch, this.attackRange.getValue()) == null) {
-                    return false;
                 } else {
-                    AttackEvent event = new AttackEvent(this.target.getEntity());
-                    EventManager.call(event);
                     ((IAccessorPlayerControllerMP) mc.playerController).callSyncCurrentPlayItem();
                     PacketUtil.sendPacket(new C02PacketUseEntity(this.target.getEntity(), Action.ATTACK));
                     if (mc.playerController.getCurrentGameType() != GameType.SPECTATOR) {
                         PlayerUtil.attackEntity(this.target.getEntity());
                     }
                     this.hitRegistered = true;
-                    return true;
                 }
             }
-        } else {
-            return false;
         }
     }
 
@@ -111,33 +101,13 @@ public class KillAura extends Module {
             } else if ((ItemUtil.isEating() || ItemUtil.isUsingBow()) && PlayerUtil.isUsingItem()) {
                 return false;
             } else {
-                AutoHeal autoHeal = (AutoHeal) Myau.moduleManager.modules.get(AutoHeal.class);
-                if (autoHeal.isEnabled() && autoHeal.isSwitching()) {
-                    return false;
+                if (this.requirePress.getValue()) {
+                    return PlayerUtil.isAttacking();
                 } else {
-                    BedNuker bedNuker = (BedNuker) Myau.moduleManager.modules.get(BedNuker.class);
-                    if (bedNuker.isEnabled() && bedNuker.isReady()) {
-                        return false;
-                    } else if (Myau.moduleManager.modules.get(Scaffold.class).isEnabled()) {
-                        return false;
-                    } else if (this.requirePress.getValue()) {
-                        return PlayerUtil.isAttacking();
-                    } else {
-                        return !this.allowMining.getValue() || !mc.objectMouseOver.typeOfHit.equals(MovingObjectType.BLOCK) || !PlayerUtil.isAttacking();
-                    }
+                    return !this.allowMining.getValue() || !mc.objectMouseOver.typeOfHit.equals(MovingObjectType.BLOCK) || !PlayerUtil.isAttacking();
                 }
             }
         }
-    }
-
-    private boolean hasValidTarget() {
-        return mc.theWorld
-                .loadedEntityList
-                .stream()
-                .anyMatch(
-                        entity -> entity instanceof EntityLivingBase
-                                && this.isValidTarget((EntityLivingBase) entity)
-                );
     }
 
     private boolean isValidTarget(EntityLivingBase entityLivingBase) {
@@ -205,35 +175,6 @@ public class KillAura extends Module {
         return entityLivingBase instanceof EntityPlayer && TeamUtil.isTarget((EntityPlayer) entityLivingBase);
     }
 
-    private int findEmptySlot(int currentSlot) {
-        for (int i = 0; i < 9; i++) {
-            if (i != currentSlot && mc.thePlayer.inventory.getStackInSlot(i) == null) {
-                return i;
-            }
-        }
-        for (int i = 0; i < 9; i++) {
-            if (i != currentSlot) {
-                ItemStack stack = mc.thePlayer.inventory.getStackInSlot(i);
-                if (stack != null && !stack.hasDisplayName()) {
-                    return i;
-                }
-            }
-        }
-        return Math.floorMod(currentSlot - 1, 9);
-    }
-
-    private int findSwordSlot(int currentSlot) {
-        for (int i = 0; i < 9; i++) {
-            if (i != currentSlot) {
-                ItemStack item = mc.thePlayer.inventory.getStackInSlot(i);
-                if (item != null && item.getItem() instanceof ItemSword) {
-                    return i;
-                }
-            }
-        }
-        return -1;
-    }
-
     public KillAura() {
         super("KillAura", false);
         this.mode = new ModeProperty("mode", 0, new String[]{"SINGLE", "SWITCH"});
@@ -267,12 +208,7 @@ public class KillAura extends Module {
     }
 
     public boolean isAttackAllowed() {
-        Scaffold scaffold = (Scaffold) Myau.moduleManager.modules.get(Scaffold.class);
-        if (scaffold.isEnabled()) {
-            return false;
-        } else {
-            return !this.requirePress.getValue() || KeyBindUtil.isKeyDown(mc.gameSettings.keyBindAttack.getKeyCode());
-        }
+        return !this.requirePress.getValue() || KeyBindUtil.isKeyDown(mc.gameSettings.keyBindAttack.getKeyCode());
     }
 
     @EventTarget(Priority.LOW)
