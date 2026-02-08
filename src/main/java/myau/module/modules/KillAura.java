@@ -69,7 +69,7 @@ public class KillAura extends Module {
     public final BooleanProperty golems;
     public final BooleanProperty silverfish;
     public final BooleanProperty teams;
-    public final ModeProperty showTarget;
+    public final BooleanProperty showTarget;
 
     private long getAttackDelay() {
         return 1000L / RandomUtil.nextLong(this.minCPS.getValue(), this.maxCPS.getValue());
@@ -259,7 +259,7 @@ public class KillAura extends Module {
         this.golems = new BooleanProperty("golems", false);
         this.silverfish = new BooleanProperty("silverfish", false);
         this.teams = new BooleanProperty("teams", true);
-        this.showTarget = new ModeProperty("show-target", 0, new String[]{"NONE", "DEFAULT", "HUD"});
+        this.showTarget = new BooleanProperty("show-target", false);
     }
 
     public EntityLivingBase getTarget() {
@@ -395,20 +395,14 @@ public class KillAura extends Module {
     @EventTarget
     public void onRender(Render3DEvent event) {
         if (this.isEnabled() && target != null) {
-            if (this.showTarget.getValue() != 0
+            if (this.showTarget.getValue()
                     && TeamUtil.isEntityLoaded(this.target.getEntity())
                     && this.isAttackAllowed()) {
-                Color color = new Color(-1);
-                switch (this.showTarget.getValue()) {
-                    case 1:
-                        if (this.target.getEntity().hurtTime > 0) {
-                            color = new Color(16733525);
-                        } else {
-                            color = new Color(5635925);
-                        }
-                        break;
-                    case 2:
-                        color = ((HUD) Myau.moduleManager.modules.get(HUD.class)).getColor(System.currentTimeMillis());
+                Color color;
+                if (this.target.getEntity().hurtTime > 0) {
+                    color = new Color(16733525);
+                } else {
+                    color = new Color(5635925);
                 }
                 RenderUtil.enableRenderState();
                 RenderUtil.drawEntityBox(this.target.getEntity(), color.getRed(), color.getGreen(), color.getBlue());
