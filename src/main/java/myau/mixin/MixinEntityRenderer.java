@@ -29,7 +29,7 @@ import org.spongepowered.asm.mixin.injection.callback.LocalCapture;
 import java.util.List;
 
 @SideOnly(Side.CLIENT)
-@Mixin({EntityRenderer.class})
+@Mixin(value = {EntityRenderer.class}, priority = 9999)
 public abstract class MixinEntityRenderer {
     @Unique
     private Box<Integer> slot = null;
@@ -94,7 +94,16 @@ public abstract class MixinEntityRenderer {
         if (scaffold.isEnabled() && scaffold.itemSpoof.getValue()) {
             int slot = scaffold.getSlot();
             if (slot >= 0) {
-                this.slot = new Box<Integer>(this.mc.thePlayer.inventory.currentItem);
+                this.slot = new Box<>(this.mc.thePlayer.inventory.currentItem);
+                this.mc.thePlayer.inventory.currentItem = slot;
+            }
+        }
+
+        AutoBlockIn autoBlockIn = (AutoBlockIn) Myau.moduleManager.modules.get(AutoBlockIn.class);
+        if (autoBlockIn.isEnabled() && autoBlockIn.itemSpoof.getValue()) {
+            int slot = autoBlockIn.getSlot();
+            if (slot >= 0) {
+                this.slot = new Box<>(this.mc.thePlayer.inventory.currentItem);
                 this.mc.thePlayer.inventory.currentItem = slot;
             }
         }
